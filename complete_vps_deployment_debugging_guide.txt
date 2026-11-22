@@ -1,0 +1,214 @@
+================================================================================
+COMPLETE STEP-BY-STEP VPS DEPLOYMENT & DEBUGGING GUIDE
+Project: Spotify RAG + Knowledge Graph Web Application
+Live Domain: https://braj23.sbs
+VPS IP Address: 189.72.158.155
+GitHub Repository: raj230987-star/spotify-web-app
+================================================================================
+
+--------------------------------------------------------------------------------
+PART 1: LOCAL WINDOWS PREPARATION & GITHUB PUSH
+--------------------------------------------------------------------------------
+1. Ensure project structure has separated frontend/ and backend/ directories,
+   each with its own Dockerfile, plus a root docker-compose.yml.
+2. Ensure sensitive files (such as backend/.env containing OPENAI_API_KEY) are
+   listed in .gitignore so secrets are never pushed to GitHub.
+3. Initialize Git and push local project code to GitHub:
+   git init
+   git add .
+   git commit -m "Initial commit: Spotify RAG + KG web app"
+   git branch -M main
+   git remote add origin https://github.com/raj230987-star/spotify-web-app.git
+   git push -u origin main
+
+--------------------------------------------------------------------------------
+PART 2: CONNECTING TO UBUNTU VPS & CLONING THE REPOSITORY
+--------------------------------------------------------------------------------
+1. Connect to your Ubuntu VPS via SSH from Windows Terminal / PowerShell:
+   ssh root@189.72.158.155
+
+2. Update system packages and verify Docker & Docker Compose are installed:
+   apt update && apt upgrade -y
+   docker --version
+   docker compose version
+
+3. Clone your GitHub repository onto the VPS:
+   cd ~
+   git clone https://github.com/raj230987-star/spotify-web-app.git
+   cd ~/spotify-web-app
+
+--------------------------------------------------------------------------------
+PART 3: ENVIRONMENT CONFIGURATION & DOCKER CONTAINERS
+--------------------------------------------------------------------------------
+1. Create the backend/.env file with your real OpenAI API key:
+   NOTE: Ensure there is NO placeholder prefix (like "PASTE_") and NO quotes.
+   echo "OPENAI_API_KEY=sk-YOUR_ACTUAL_OPENAI_API_KEY" > ~/spotify-web-app/backend/.env
+
+2. Verify the .env file format:
+   cat ~/spotify-web-app/backend/.env
+
+3. Build and start the Docker containers in detached mode:
+   cd ~/spotify-web-app
+   docker compose up -d --build
+
+4. Verify both containers (frontend on port 3000, backend on port 8000) are running:
+   docker ps
+
+--------------------------------------------------------------------------------
+PART 4: FREEING PORT 80 & INSTALLING NGINX REVERSE PROXY
+--------------------------------------------------------------------------------
+1. If a pre-installed proxy container (such as Traefik) is occupying port 80/443,
+   check running containers and stop/remove it so Nginx can bind to port 80:
+   docker ps
+   docker stop <traefik_container_name>
+   docker rm <traefik_container_name>
+
+2. Install Nginx on the Ubuntu VPS:
+   apt update
+   apt install -y nginx
+
+3. Create the Nginx reverse proxy configuration file:
+   cat <<'EOF' > /etc/nginx/sites-available/spotify-app
+   server {
+       listen 80;
+       server_name braj23.sbs 189.72.158.155;
+
+       location / {
+           proxy_pass http://127.0.0.1:3000;
+           proxy_http_version 1.1;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+
+       location /api/ {
+           proxy_pass http://127.0.0.1:8000/;
+           proxy_http_version 1.1;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+   EOF
+
+4. Enable the site, disable the default Nginx site, test syntax, and reload:
+   ln -sf /etc/nginx/sites-available/spotify-app /etc/nginx/sites-enabled/spotify-app
+   rm -f /etc/nginx/sites-enabled/default
+   nginx -t
+   systemctl reload nginx
+
+5. Verify HTTP access via IP in browser before configuring DNS:
+   Open http://189.72.158.155
+
+--------------------------------------------------------------------------------
+PART 5: DOMAIN VERIFICATION & DNS CONFIGURATION (HOSTINGER)
+--------------------------------------------------------------------------------
+1. Verify domain ownership:
+   - Check your registered email inbox (and Spam/Promotions) for the domain
+     verification email from Hostinger and click the verification link.
+   - Confirm domain status in Hostinger changes from "Pending verification"
+     to Active.
+
+2. Add the DNS A Record in Hostinger (Domains -> Manage -> DNS / Nameservers):
+   - Type:  A
+   - Name:  @
+   - Value: 189.72.158.155
+   - TTL:   14400
+   - Click "Add Record".
+   - IMPORTANT: Delete any duplicate/old A record for "@" pointing to a default
+     parking IP so only 189.72.158.155 remains.
+
+3. Verify DNS propagation from Windows Command Prompt / PowerShell:
+   nslookup braj23.sbs
+   (Confirm output shows Address: 189.72.158.155)
+
+4. Test domain over HTTP in browser:
+   Open http://braj23.sbs
+
+--------------------------------------------------------------------------------
+PART 6: ENABLING FREE HTTPS / SSL WITH CERTBOT (LET'S ENCRYPT)
+--------------------------------------------------------------------------------
+1. Install Certbot and its Nginx plugin on the VPS:
+   apt install -y certbot python3-certbot-nginx
+
+2. Run Certbot to automatically issue the SSL certificate and configure Nginx:
+   certbot --nginx -d braj23.sbs
+
+3. Interactive prompts during Certbot setup:
+   - Enter your email address for urgent renewal/security notices.
+   - Agree to Let's Encrypt Terms of Service: y
+   - Share email with EFF (optional): n
+
+4. Verify HTTPS and auto-renewal:
+   - Open https://braj23.sbs in your browser and confirm the padlock/secure icon.
+   - Test automatic certificate renewal dry-run anytime with:
+     certbot renew --dry-run
+
+--------------------------------------------------------------------------------
+PART 7: HOW TO DEPLOY FUTURE CODE UPDATES
+--------------------------------------------------------------------------------
+Whenever you push changes from Windows to GitHub:
+1. On Windows:
+   git add .
+   git commit -m "Describe your update"
+   git push origin main
+
+2. On VPS:
+   cd ~/spotify-web-app
+   git pull origin main
+   docker compose up -d --build
+
+--------------------------------------------------------------------------------
+PART 8: COMPLETE DEBUGGING & TROUBLESHOOTING PLAYBOOK
+--------------------------------------------------------------------------------
+ISSUE 1: Browser shows 500 Internal Server Error on /api/chat
+- Cause: Backend Python exception (e.g., invalid OpenAI API key, missing data).
+- Check logs:
+  docker logs --tail 60 spotify-rag-backend
+- Fix if OpenAI 401 AuthenticationError appears:
+  Check ~/spotify-web-app/backend/.env for typos or "PASTE_" prefixes:
+  cat ~/spotify-web-app/backend/.env
+  Overwrite with clean key and force-recreate backend container:
+  echo "OPENAI_API_KEY=sk-YOUR_ACTUAL_KEY" > ~/spotify-web-app/backend/.env
+  cd ~/spotify-web-app && docker compose up -d --force-recreate backend
+
+ISSUE 2: Browser shows 502 Bad Gateway
+- Cause: Nginx is running, but backend or frontend Docker container is stopped
+  or crashed.
+- Check container status:
+  docker ps -a
+- Restart containers and inspect logs:
+  cd ~/spotify-web-app && docker compose up -d
+  docker logs --tail 50 spotify-rag-backend
+  docker logs --tail 50 spotify-rag-frontend
+
+ISSUE 3: Nginx fails to start or reload ("address already in use" on port 80)
+- Cause: Another service or container (like Traefik or Apache) is using port 80.
+- Check what process is listening on port 80:
+  ss -tulpn | grep :80
+- Stop conflicting container/service and reload Nginx:
+  nginx -t && systemctl restart nginx
+
+ISSUE 4: Domain braj23.sbs does not load or points to wrong page
+- Cause: DNS A record not propagated yet, typo in Name/Value, or conflicting A
+  record in Hostinger.
+- Check live DNS resolution:
+  nslookup braj23.sbs
+- Verify Hostinger DNS table has ONLY ONE A record for "@" -> 189.72.158.155.
+
+ISSUE 5: Browser Console shows Mixed Content or CORS error after enabling HTTPS
+- Cause: Frontend JavaScript hardcoded http://189.72.158.155:8000 instead of
+  using relative "/api/..." paths.
+- Fix: Always call relative path "/api/chat" in frontend fetch() requests so
+  Nginx handles routing seamlessly over both HTTP and HTTPS.
+
+ISSUE 6: Useful Quick-Check Diagnostic Commands on VPS
+- Check running Docker containers:     docker ps
+- View live backend logs:              docker logs -f spotify-rag-backend
+- View Nginx error logs:               tail -n 50 /var/log/nginx/error.log
+- Test Nginx config syntax:            nginx -t
+- Check SSL certificate expiration:    certbot certificates
+- Check disk space on VPS:             df -h
+================================================================================
