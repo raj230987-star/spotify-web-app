@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spotify RAG + KG Assistant</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #ffffff;
+      max-width: 750px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    h1 { color: #1db954; }
+    .box {
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 15px;
+    }
+    input {
+      width: 75%;
+      padding: 12px;
+      border-radius: 6px;
+      border: none;
+      font-size: 16px;
+    }
+    button {
+      padding: 12px 18px;
+      border-radius: 6px;
+      border: none;
+      background: #1db954;
+      color: #000;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    pre {
+      background: #141414;
+      padding: 12px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      color: #b3b3b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Spotify RAG + KG Chatbot</h1>
+  <p>Ask about songs, artists, moods, genres, or playlists from your local FAISS + KG assistant.</p>
+
+  <div class="box">
+    <input id="questionInput" type="text" placeholder="e.g., Recommend an energetic night driving song" />
+    <button onclick="askBot()">Ask</button>
+  </div>
+
+  <div class="box" id="resultBox" style="display:none;">
+    <h3>Answer</h3>
+    <p id="answerText"></p>
+    <h4>Retrieved Tracks (FAISS)</h4>
+    <pre id="tracksText"></pre>
+    <h4>Knowledge Graph Relations</h4>
+    <pre id="kgText"></pre>
+  </div>
+
+  <script>
+    async function askBot() {
+      const input = document.getElementById("questionInput");
+      const question = input.value.trim();
+      if (!question) return;
+
+      document.getElementById("resultBox").style.display = "block";
+      document.getElementById("answerText").innerText = "Thinking...";
+
+      // Uses /api/chat so it works locally AND behind Nginx on the VPS
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question })
+      });
+
+      const data = await res.json();
+      document.getElementById("answerText").innerText = data.answer;
+      document.getElementById("tracksText").innerText = JSON.stringify(data.retrieved_tracks, null, 2);
+      document.getElementById("kgText").innerText = (data.kg_relations || []).join("\n");
+    }
+  </script>
+</body>
+</html>

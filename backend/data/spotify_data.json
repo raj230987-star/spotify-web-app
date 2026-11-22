@@ -1,0 +1,47 @@
+[
+  {
+    "track": "Blinding Lights",
+    "artist": "The Weeknd",
+    "album": "After Hours",
+    "genre": "Synthwave",
+    "mood": "Energetic",
+    "playlist": "Late Night Drive",
+    "details": "80s-inspired upbeat synth-pop track with driving tempo, popular for night driving and workouts."
+  },
+  {
+    "track": "Starboy",
+    "artist": "The Weeknd",
+    "album": "Starboy",
+    "genre": "R&B / Electro-Pop",
+    "mood": "Confident",
+    "playlist": "Top Hits Mix",
+    "details": "Collaboration with Daft Punk featuring sleek electronic beats and dark R&B vocals."
+  },
+  {
+    "track": "Shape of You",
+    "artist": "Ed Sheeran",
+    "album": "Divide",
+    "genre": "Pop",
+    "mood": "Happy",
+    "playlist": "Feel Good Pop",
+    "details": "Tropical house-influenced acoustic pop song with rhythmic marimba melody."
+  },
+  {
+    "track": "Perfect",
+    "artist": "Ed Sheeran",
+    "album": "Divide",
+    "genre": "Acoustic Ballad",
+    "mood": "Romantic",
+    "playlist": "Acoustic Love",
+    "details": "Slow romantic ballad written with orchestral strings, popular for weddings and quiet evenings."
+  },
+  {
+    "track": "Levitating",
+    "artist": "Dua Lipa",
+    "album": "Future Nostalgia",
+    "genre": "Disco-Pop",
+    "mood": "Party",
+    "playlist": "Dance Floor Energy",
+    "details": "Upbeat nu-disco dance track with retro basslines and energetic party vibes."
+  }
+]
